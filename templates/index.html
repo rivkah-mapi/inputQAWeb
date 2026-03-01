@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת QA גאוגרפית - גרסה מלאה</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 30px; }
+        .card { border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.1); border: none; }
+        .header-custom { background-color: #2c3e50; color: white; padding: 25px; border-radius: 12px 12px 0 0; }
+        .section-title { color: #2980b9; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 25px; margin-bottom: 20px; font-weight: bold; }
+        .btn-run { background-color: #007bff; color: white; border: none; padding: 15px; font-size: 1.2rem; font-weight: bold; transition: 0.3s; width: 100%; border-radius: 8px; }
+        .btn-run:hover { background-color: #0056b3; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        label { font-weight: 500; color: #495057; }
+        .rounded-custom { border-radius: 8px !important; }
+        #successAlert {  display: none; }
+        .btn-run:disabled {
+            background-color: #bdc3c7 !important; 
+            color: #7f8c8d !important;          
+            cursor: not-allowed;              
+            transform: none !important;        
+            box-shadow: none !important;       
+            opacity: 0.7;                     
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container mb-5">
+        <div class="card">
+            <div class="header-custom text-center">
+                <h1>מערכת QA לבדיקת תצלומי אוויר וגובה</h1>
+            </div>
+            
+            <div class="card-body p-4">
+                <form id="qaForm">
+                    
+                    <h4 class="section-title">בדיקת אורתופוטו (Ortho)</h4>
+                    <div class="row g-3">
+                        <div class="col-md-9">
+                            <label class="form-label">קובץ אינדקס (Shapefile):</label>
+                            <div class="input-group d-flex gap-2">
+                                <input type="text" id="ortho_index" class="form-control rounded-custom" placeholder="בחר קובץ .shp" readonly>
+                                <button class="btn btn-outline-secondary rounded-custom" type="button" onclick="browse('file', 'ortho_index')">📁 בחר קובץ</button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">רזולוציה (ס"מ):</label>
+                            <input type="number" id="ortho_res" class="form-control rounded-custom" placeholder="למשל: 20">
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">תיקיית צילומים (TIF):</label>
+                            <div class="input-group d-flex gap-2">
+                                <input type="text" id="ortho_folder" class="form-control rounded-custom" placeholder="בחר תיקיית מקור" readonly>
+                                <button class="btn btn-outline-secondary rounded-custom" type="button" onclick="browse('folder', 'ortho_folder')">📂 בחר תיקייה</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="section-title">בדיקת מודל גובה (DSM)</h4>
+                    <div class="row g-3">
+                        <div class="col-md-9">
+                            <label class="form-label">קובץ אינדקס (Shapefile):</label>
+                            <div class="input-group d-flex gap-2">
+                                <input type="text" id="dsm_index" class="form-control rounded-custom" placeholder="בחר קובץ .shp" readonly>
+                                <button class="btn btn-outline-secondary rounded-custom" type="button" onclick="browse('file', 'dsm_index')">📁 בחר קובץ</button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">רזולוציה (ס"מ):</label>
+                            <input type="number" id="dsm_res" class="form-control rounded-custom" placeholder="למשל: 50">
+                        </div>
+                        <div class="col-md-12 mb-4">
+                            <label class="form-label">תיקיית קבצי גובה (TIF):</label>
+                            <div class="input-group d-flex gap-2">
+                                <input type="text" id="dsm_folder" class="form-control rounded-custom" placeholder="בחר תיקיית מקור" readonly>
+                                <button class="btn btn-outline-secondary rounded-custom" type="button" onclick="browse('folder', 'dsm_folder')">📂 בחר תיקייה</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="button" class="btn-run" onclick="runQA()">🚀 הפעל בדיקת איכות (Run QA)</button>
+                    </div>
+                </form>
+                
+                <div id="progressArea" class="mt-4" style="display: none;">
+                    <label id="statusText" class="mb-2">מתכונן להרצה...</label>
+                    <div class="progress" style="height: 25px;">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                        role="progressbar" style="width: 0%;">0%</div>
+                    </div>
+                </div>
+                
+                <div id="successAlert" class="alert alert-success mt-4 shadow-sm" role="alert">
+                    <h4 class="alert-heading">✨ הבדיקה הושלמה!</h4>
+                    <p id="successMessage" class="mb-0"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function browse(type, elementId) {
+            const url = type === 'folder' ? '/browse_folder' : '/browse_file';
+            try {
+                const response = await fetch(url, { method: 'POST' });
+                const data = await response.json();
+                if (data.path) {
+                    // תיקון לוכסנים כפולים והחלפת לוכסן קדמי באחורי במידת הצורך
+                    let cleanPath = data.path.replace(/\//g, "\\");
+                    document.getElementById(elementId).value = cleanPath;
+                }
+            } catch (error) {
+                console.error('Error during browse:', error);
+            }
+        }
+        
+        async function runQA() {
+
+            const successAlert = document.getElementById('successAlert');
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('statusText');
+            const btn = document.querySelector('.btn-run');
+            const progressArea = document.getElementById('progressArea');
+                    
+            successAlert.style.display = 'none';
+            successAlert.innerText = '';
+            
+            statusText.innerText = "מתכונן להרצה...";
+            statusText.style.color = "#212529"; // החזרת צבע טקסט לשחור
+            
+            progressArea.style.display = 'block';
+            progressBar.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.innerText = '0%';
+    
+            progressBar.classList.remove('bg-success', 'bg-danger');
+            progressBar.classList.add('progress-bar-animated', 'progress-bar-striped');
+            
+            const o_idx = document.getElementById('ortho_index').value;
+            const o_res = document.getElementById('ortho_res').value;
+            const o_fld = document.getElementById('ortho_folder').value;
+            
+            const d_idx = document.getElementById('dsm_index').value;
+            const d_res = document.getElementById('dsm_res').value;
+            const d_fld = document.getElementById('dsm_folder').value;
+            
+            if (o_idx && (!o_res || !o_fld)) {
+                alert("נא להשלים רזולוציה ותיקייה עבור האורתופוטו");
+                return;
+            }
+            if (d_idx && (!d_res || !d_fld)) {
+                alert("נא להשלים רזולוציה ותיקייה עבור ה-DSM");
+                return;
+            }
+            if (!o_idx && !d_idx) {
+                alert("יש לבחור לפחות קובץ אינדקס אחד (אורתו או DSM)");
+                return;
+            }
+            
+            // הכנת הממשק
+            btn.disabled = true;
+            progressArea.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.innerText = '0%';
+            
+            // פונקציית מעקב התקדמות
+            const progressInterval = setInterval(async () => {
+                try {
+                    const res = await fetch('/get_progress');
+                    const data = await res.json();
+                    progressBar.style.width = data.percent + '%';
+                    progressBar.innerText = data.percent + '%';
+                    statusText.innerText = data.message;
+                } catch (e) { console.error("Progress error:", e); }
+            }, 800);
+            
+            const payload = {
+                ortho_index: document.getElementById('ortho_index').value,
+                ortho_res: document.getElementById('ortho_res').value,
+                ortho_folder: document.getElementById('ortho_folder').value,
+                dsm_index: document.getElementById('dsm_index').value,
+                dsm_res: document.getElementById('dsm_res').value,
+                dsm_folder: document.getElementById('dsm_folder').value
+            };
+            
+            try {
+                const response = await fetch('/run_qa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                clearInterval(progressInterval);
+                btn.disabled = false;
+                
+                if (result.status === 'success') {
+                    clearInterval(progressInterval); // מפסיקים לשאול את השרת
+                    progressBar.style.width = '100%'; 
+                    progressBar.innerText = '100%';
+                    progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    progressBar.classList.add('bg-success');
+                    
+                    statusText.innerText = "הסתיים בהצלחה.";
+                    
+                    successAlert.style.display = 'block';
+                    successAlert.innerText = result.message;
+                    
+                } else {
+                    clearInterval(progressInterval);
+                    
+                    // 2. שחרור כפתור ההרצה
+                    btn.disabled = false;
+                    
+                    // 3. עדכון ויזואלי של פס ההתקדמות למצב שגיאה
+                    progressBar.style.display = 'none';
+                    statusText.innerText = "הפעולה הופסקה עקב שגיאה.";
+                    statusText.style.color = "red";
+                    
+                    // 4. הצגת הודעת השגיאה למשתמש
+                    alert("שגיאה בתהליך: " + result.message);
+                }
+            } catch (error) {
+                console.log('error--', error)
+                clearInterval(progressInterval);
+                btn.disabled = false;
+                alert("שגיאה בתקשורת עם השרת");
+            }
+        }
+    </script>
+    
+</body>
+</html>
