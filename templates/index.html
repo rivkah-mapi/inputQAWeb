@@ -14,7 +14,6 @@
         .btn-run:hover { background-color: #0056b3; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
         label { font-weight: 500; color: #495057; }
         .rounded-custom { border-radius: 8px !important; }
-        #successAlert {  display: none; }
         .btn-run:disabled {
             background-color: #bdc3c7 !important; 
             color: #7f8c8d !important;          
@@ -93,9 +92,17 @@
                     </div>
                 </div>
                 
-                <div id="successAlert" class="alert alert-success mt-4 shadow-sm" role="alert">
-                    <h4 class="alert-heading">✨ הבדיקה הושלמה!</h4>
-                    <p id="successMessage" class="mb-0"></p>
+                
+                <div id="successAlert" class="alert alert-success mt-4 shadow-sm" role="alert" style="display: none;">
+                    <h4 class="alert-heading">✨ הבדיקה הסתיימה בהצלחה!</h4>
+                    <p id="successMessage" class="mb-3"></p>
+                    <hr>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="text-muted">ניתן להוריד את הדו"ח ואת מפות השגיאות המעודכנות:</span>
+                        <a href="/download_all" class="btn btn-primary rounded-custom shadow-sm">
+                            📦 הורד חבילת תוצאות (ZIP)
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -126,7 +133,6 @@
             const progressArea = document.getElementById('progressArea');
                     
             successAlert.style.display = 'none';
-            successAlert.innerText = '';
             
             statusText.innerText = "מתכונן להרצה...";
             statusText.style.color = "#212529"; // החזרת צבע טקסט לשחור
@@ -207,7 +213,7 @@
                     statusText.innerText = "הסתיים בהצלחה.";
                     
                     successAlert.style.display = 'block';
-                    successAlert.innerText = result.message;
+                  //  successAlert.innerText = result.message;
                     
                 } else {
                     clearInterval(progressInterval);
