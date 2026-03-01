@@ -5,7 +5,8 @@ import tkinter as tk
 from tkinter import filedialog
 import rasterio
 import geopandas as gpd
-from flask import Flask, render_template, jsonify, request
+import shutil
+from flask import Flask, render_template, jsonify, request, send_file
 
 
 app = Flask(__name__)
@@ -28,6 +29,26 @@ def extract_raster_info(sheet_id, src, geometry):
         "DataType": str(src.dtypes[0]),
         "geometry": geometry
     }
+
+@app.route('/download_all')
+def download_all():
+    try:
+        # הנתיב שבו נמצאת תיקיית התוצאות בשרת
+        output_base = os.path.join(os.path.expanduser("~"), "Documents", "QA_Results")
+        
+        if not os.path.exists(output_base):
+            return "תיקיית התוצאות לא נמצאה בשרת", 404
+
+        # יצירת קובץ ZIP מהתיקייה
+        # הקובץ יישמר זמנית בתיקיית המסמכים בשרת
+        archive_path = os.path.join(os.path.expanduser("~"), "Documents", "QA_Results_Archive")
+        shutil.make_archive(archive_path, 'zip', output_base)
+        
+        # שליחת הקובץ המוכן לדפדפן של המשתמש
+        return send_file(archive_path + ".zip", as_attachment=True, download_name="QA_Full_Results.zip")
+        
+    except Exception as e:
+        return f"שגיאה ביצירת קובץ ההורדה: {str(e)}", 500
 
 
 # פונקציות בחירת קבצים
